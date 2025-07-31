@@ -82,7 +82,7 @@ class NeuronNetwork:
             er /= len(input)
             keep_error.append(er)
             N += 1
-            print(f"Epoch = {N} | AV_Error = {er}")
+            # print(f"Epoch = {N} | AV_Error = {er}")
         
         plt.subplot(2, 1, 1)
         plt.plot(keep_error)
@@ -90,7 +90,7 @@ class NeuronNetwork:
         plt.xlabel('Epoch')
         plt.ylabel('MSE')
 
-    def test(self, input, design_output, type = "classification"):
+    def test(self, input, design_output, type = "classification", min_max=None):
         actual_output = []
         for i in input:
             self.feed_forward(i)
@@ -115,11 +115,28 @@ class NeuronNetwork:
             plt.ylabel('True Label')
             plt.title('Confusion Matrix' + f' (Set {self.set_Num})')
         else:
+            
             actual_output = [element[0] for element in actual_output]
             er = 0
+            print(f"\nPredicted vs. Actual Flood Levels (Set {self.set_Num}):")
+            print(f"{'Sample':<8}{'Predicted':<15}{'Actual':<15}{'Error':<10}")
+            print("-" * 45)
+
             for i in range(len(actual_output)):
-                er += np.sum((actual_output[i]-design_output[i])**2) / 2
+                pred = actual_output[i]
+                true = design_output[i] if not isinstance(design_output[i], (list, np.ndarray)) else design_output[i][0]
+                
+                # Denormalize
+                if min_max:
+                    min_val, max_val = min_max
+                    pred = pred * (max_val - min_val) + min_val
+                    true = true * (max_val - min_val) + min_val
+
+                error = abs(pred - true)
+                er += error ** 2 / 2
+                print(f"{i:<8}{pred:<15.4f}{true:<15.4f}{error:<10.4f}")
             er /= len(actual_output)
+               
             categories = [f"{element}" for element in range(len(design_output))]
             bar_width = 0.2
             index = range(len(categories))
@@ -137,7 +154,8 @@ def Read_Data(data_type = "regression"):
     if data_type == "regression":
         return Read_Data1()
     elif data_type == "classification":
-        return Read_Data2()
+        input, design_output = Read_Data2()
+        return input, design_output, None, None
 
 def Read_Data1(filename = 'Flood_dataset.txt'):
     data = []
@@ -145,7 +163,8 @@ def Read_Data1(filename = 'Flood_dataset.txt'):
     design_output = []
     with open(filename) as f:
         for line in f.readlines()[2:]:
-            data.append([float(element[:-1]) for element in line.split()])
+            values = list(map(float, line.strip().split()))
+            data.append(values)
     data = np.array(data)
     np.random.shuffle(data)
     min_vals = np.min(data, axis=0)
@@ -155,7 +174,7 @@ def Read_Data1(filename = 'Flood_dataset.txt'):
     for i in data:
         input.append(i[:-1])
         design_output.append(i[-1])
-    return input, design_output
+    return input, design_output, min_vals, max_vals
 
 def Read_Data2(filename = 'cross.txt'):
     data = []
@@ -210,7 +229,13 @@ if __name__ == "__main__":
             data_type = "classification"
             
     #  ทำ k-fold
-    input, design_output = Read_Data(data_type)
+    input, design_output, min_vals, max_vals = Read_Data(data_type)
+    if min_vals is not None and max_vals is not None:
+        print("min_vals[-1]:", min_vals[-1])
+        print("max_vals[-1]:", max_vals[-1])
+    else:
+        print("No min_vals and max_vals available for this data_type.")
+    
     input_size = len(input[0])
     output_size = len(design_output[0]) if isinstance(design_output[0], (list, np.ndarray)) else 1
     layer = layer = [input_size] + hidden_layers + [output_size]
@@ -218,16 +243,20 @@ if __name__ == "__main__":
     design_output_train, design_output_test = k_fold_validation(design_output, k)
 
     # สร้างโมเดลตั้งต้น
-    # nn = NN(layer[data_type], learning_rate, momentum_rate, activation_function) 
     nn = NeuronNetwork(layer, learning_rate, momentum_rate, activation_function) 
 
     # ทดสอบโมเดลแบบ cross validation
     for i in range(len(input_train)):
         plt.figure(i+1)
-        nn_copy = copy.deepcopy(nn)
-        nn_copy.set_Num = i + 1
-        nn_copy.train(input_train[i], design_output_train[i], Epoch=Max_Epoch, L_error=AV_error)
-        nn_copy.test(input_test[i], design_output_test[i], type=data_type)
+        NN_test = copy.deepcopy(nn)
+        NN_test.set_Num = i + 1
+        NN_test.train(input_train[i], design_output_train[i], Epoch=Max_Epoch, L_error=AV_error)
+        NN_test.test(
+            input_test[i],
+            design_output_test[i],
+            type=data_type,
+            min_max=(min_vals[-1], max_vals[-1]) if data_type == "regression" else None
+        )
         # ใช้ layout เดียวกันกับทุก figure
         plt.subplots_adjust(
             left=0.125,
