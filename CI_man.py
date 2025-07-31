@@ -142,8 +142,12 @@ class NeuronNetwork:
             index = range(len(categories))
             plt.subplot(2, 1, 2)
             plt.bar(index, np.array(actual_output), bar_width, label='Actual Output', color='b')
-            plt.bar([i + bar_width for i in index], np.array([d[0] if isinstance(d, (list, np.ndarray)) else d for d in design_output]), bar_width, label='Design Output', color='orange')
-            plt.bar([j + bar_width for j in [i + bar_width for i in index]], np.array([100 if abs(actual_output[i]-design_output[i])>100 else abs(actual_output[i]-design_output[i]) for i in range(len(actual_output))]), bar_width, label='Error', color='r')
+            plt.bar([i + bar_width for i in index], np.array([d[0] if isinstance(d, (list, np.ndarray)) else d for d in design_output]), 
+                    bar_width, label='Design Output', color='orange')
+            plt.bar([j + bar_width for j in [i + bar_width for i in index]],
+                    np.array([100 if abs(actual_output[i]-design_output[i])>100 
+                              else abs(actual_output[i]-design_output[i]) for i in range(len(actual_output))]),
+                    bar_width, label='Error', color='r')
             plt.xlabel('Sample')
             plt.ylabel('Output')
             plt.title('Actual Output vs. Design Output of TestSet')
@@ -152,12 +156,12 @@ class NeuronNetwork:
                     
 def Read_Data(data_type = "regression"):
     if data_type == "regression":
-        return Read_Data1()
+        return Read_Flood_Data()
     elif data_type == "classification":
-        input, design_output = Read_Data2()
+        input, design_output = Read_Cross_data()
         return input, design_output, None, None
 
-def Read_Data1(filename = 'Flood_dataset.txt'):
+def Read_Flood_Data(filename = 'Flood_dataset.txt'):
     data = []
     input = []
     design_output = []
@@ -176,7 +180,7 @@ def Read_Data1(filename = 'Flood_dataset.txt'):
         design_output.append(i[-1])
     return input, design_output, min_vals, max_vals
 
-def Read_Data2(filename = 'cross.txt'):
+def Read_Cross_data(filename = 'cross.txt'):
     data = []
     input = []
     design_output = []
@@ -203,13 +207,13 @@ def k_fold_validation(data, k = 10):
 
 if __name__ == "__main__":
 ##------------------------------------ สำหรับแก้ไขค่าต่างๆ ------------------------------------##
-    k = 10 # กำหนด k-fold-varidation
-    hidden_layers = [16] # โดย hidden สร้างได้หลาย layer เช่น [8,16] หรือ [16,32,16]
-    learning_rate = 0.3
-    momentum_rate = 0.8
-    Max_Epoch = 1000
-    AV_error = 0.001
-    data_type : str = "classification" # data_type : str = "regression" or "classification
+    k : int                   = 10 # กำหนด k-fold-varidation
+    hidden_layers : int       = [16] # โดย hidden สร้างได้หลาย layer เช่น [8,16] หรือ [16,32,16]
+    learning_rate : float     = 0.3
+    momentum_rate : float     = 0.8
+    Max_Epoch : int           = 1000
+    AV_error : float          = 0.001
+    data_type : str           = "classification" # data_type : str = "regression" or "classification
     activation_function : str = 'sigmoid' # activation_function = 'sigmoid' or 'relu' or 'tanh' or 'linear'
 ##-----------------------------------------------------------------------------------------##
 
@@ -266,4 +270,4 @@ if __name__ == "__main__":
             wspace=0.5,
             hspace=0.46
         )
-    plt.show()
+    plt.show() # show กราฟทั้งหมดที่สร้างขึ้น
